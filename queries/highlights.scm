@@ -1,81 +1,47 @@
-(identifier) @variable
+; Keywords
+[
+  "const"
+  "int"
+  "void"
+  "if"
+  "else"
+  "while"
+  "break"
+  "continue"
+  "return"
+] @keyword
 
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z\\d_]*$"))
-
-"break" @keyword
-"case" @keyword
-"const" @keyword
-"continue" @keyword
-"default" @keyword
-"do" @keyword
-"else" @keyword
-"enum" @keyword
-"extern" @keyword
-"for" @keyword
-"if" @keyword
-"inline" @keyword
-"return" @keyword
-"sizeof" @keyword
-"static" @keyword
-"struct" @keyword
-"switch" @keyword
-"typedef" @keyword
-"union" @keyword
-"volatile" @keyword
-"while" @keyword
-
-"#define" @keyword
-"#elif" @keyword
-"#else" @keyword
-"#endif" @keyword
-"#if" @keyword
-"#ifdef" @keyword
-"#ifndef" @keyword
-"#include" @keyword
-(preproc_directive) @keyword
-
-"--" @operator
-"-" @operator
-"-=" @operator
-"->" @operator
+; Operators
+(binary_expression op: _ @operator)
+(unary_expression operator: _ @operator)
 "=" @operator
-"!=" @operator
-"*" @operator
-"&" @operator
-"&&" @operator
-"+" @operator
-"++" @operator
-"+=" @operator
-"<" @operator
-"==" @operator
-">" @operator
-"||" @operator
 
-"." @delimiter
-";" @delimiter
+; Literals
+(number) @number
 
-(string_literal) @string
-(system_lib_string) @string
+; Comments
+(line_comment) @comment
+(block_comment) @comment
 
-(null) @constant
-(number_literal) @number
-(char_literal) @number
+; Delimiters
+[";" "," "[" "]" "(" ")"] @punctuation.delimiter
+["{" "}"] @punctuation.bracket
 
-(field_identifier) @property
-(statement_identifier) @label
-(type_identifier) @type
-(primitive_type) @type
-(sized_type_specifier) @type
+; Function definitions
+(function_def name: (identifier) @function)
 
-(call_expression
-  function: (identifier) @function)
-(call_expression
-  function: (field_expression
-    field: (field_identifier) @function))
-(function_declarator
-  declarator: (identifier) @function)
-(preproc_function_def
-  name: (identifier) @function.special)
+; Function calls
+(call_expression function: (identifier) @function)
 
-(comment) @comment
+; Parameters
+(func_param name: (identifier) @variable.parameter)
+
+; Assignment target (lval)
+(assign_stmt lval: (lval name: (identifier) @variable))
+
+; Const / var declaration names
+(const_def name: (identifier) @variable)
+(var_def name: (identifier) @variable)
+
+; General identifiers
+(identifier) @variable

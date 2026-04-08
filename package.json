@@ -1,8 +1,8 @@
 {
-  "name": "tree-sitter-c",
-  "version": "0.24.1",
-  "description": "C grammar for tree-sitter",
-  "repository": "https://github.com/tree-sitter/tree-sitter-c",
+  "name": "tree-sitter-sysy",
+  "version": "0.1.0",
+  "description": "SysY grammar for tree-sitter",
+  "repository": "",
   "license": "MIT",
   "author": {
     "name": "Max Brunsfeld",
@@ -20,7 +20,7 @@
     "incremental",
     "parsing",
     "tree-sitter",
-    "c"
+    "sysy"
   ],
   "files": [
     "grammar.js",

@@ -1,4 +1,4 @@
-//! This crate provides C language support for the [tree-sitter][] parsing library.
+//! This crate provides SysY language support for the [tree-sitter][] parsing library.
 //!
 //! Typically, you will use the [language][language func] function to add this language to a
 //! tree-sitter [Parser][], and then use the parser to parse some code:
@@ -7,15 +7,15 @@
 //! use tree_sitter::Parser;
 //!
 //! let code = r#"
-//! int double(int x) {
-//!     return x * 2;
+//! int main() {
+//!     return 0;
 //! }
 //! "#;
 //! let mut parser = Parser::new();
-//! let language = tree_sitter_c::LANGUAGE;
+//! let language = tree_sitter_sysy::LANGUAGE;
 //! parser
 //!     .set_language(&language.into())
-//!     .expect("Error loading C parser");
+//!     .expect("Error loading SysY parser");
 //! let tree = parser.parse(code, None).unwrap();
 //! assert!(!tree.root_node().has_error());
 //! ```
@@ -28,11 +28,11 @@
 use tree_sitter_language::LanguageFn;
 
 extern "C" {
-    fn tree_sitter_c() -> *const ();
+    fn tree_sitter_sysy() -> *const ();
 }
 
 /// The tree-sitter [`LanguageFn`] for this grammar.
-pub const LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_c) };
+pub const LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_sysy) };
 
 /// The content of the [`node-types.json`][] file for this grammar.
 ///
@@ -52,6 +52,6 @@ mod tests {
         let mut parser = tree_sitter::Parser::new();
         parser
             .set_language(&super::LANGUAGE.into())
-            .expect("Error loading C parser");
+            .expect("Error loading SysY parser");
     }
 }

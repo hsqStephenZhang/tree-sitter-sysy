@@ -3,22 +3,22 @@
  * @license MIT
  *
  * SysY is a subset of C used in the PKU compiler course.
- * Grammar source: https://github.com/pku-minic/kira-rs/blob/master/src/sysy.lalrpop
+ * Reference: SysY Language Specification (2022)
  */
 
 /// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
 
+// Operator precedence (low → high), matching the spec's expression hierarchy:
+//   LOrExp  LAndExp  EqExp  RelExp  AddExp  MulExp  UnaryExp
 const PREC = {
-  LOR: 1,
-  LAND: 2,
-  EQ: 3,
-  REL: 4,
-  ADD: 5,
-  MUL: 6,
-  UNARY: 7,
-  CALL: 8,
-  SUBSCRIPT: 9,
+  LOR:   1,  // ||
+  LAND:  2,  // &&
+  EQ:    3,  // == !=
+  REL:   4,  // < > <= >=
+  ADD:   5,  // + -
+  MUL:   6,  // * / %
+  UNARY: 7,  // + - !
 };
 
 module.exports = grammar({
@@ -32,15 +32,20 @@ module.exports = grammar({
 
   word: $ => $.identifier,
 
-  // lval vs expression: at statement level, `id[i] =` could start either an
-  // assign_stmt (lval) or an exp_stmt (expression).  GLR resolves it.
+  // LVal appears in both expression (rvalue via PrimaryExp) and assign_stmt
+  // (lvalue).  The same token sequence `id[i]` starts both, so we declare the
+  // conflict and let the GLR engine resolve it by lookahead (`=` → assign_stmt;
+  // anything else → exp_stmt).
   conflicts: $ => [
     [$.lval, $.expression],
+    // "int" identifier is ambiguous: could start var_decl or function_def
+    // (whose return type is a func_type node).
+    [$.var_decl, $.func_type],
   ],
 
   rules: {
-    // CompUnit ::= (Decl | FuncDef)*
-    compilation_unit: $ => repeat(choice(
+    // CompUnit -> (Decl | FuncDef)+
+    compilation_unit: $ => repeat1(choice(
       $.decl,
       $.function_def,
     )),
@@ -66,6 +71,7 @@ module.exports = grammar({
       field('init', $.const_init_val),
     ),
 
+    // ConstInitVal -> ConstExp | "{" [ConstInitVal {"," ConstInitVal}] "}"
     const_init_val: $ => choice(
       field('exp', $.const_exp),
       seq('{', '}'),
@@ -86,6 +92,7 @@ module.exports = grammar({
       optional(seq('=', field('init', $.init_val))),
     ),
 
+    // InitVal -> Exp | "{" [InitVal {"," InitVal}] "}"
     init_val: $ => choice(
       field('exp', $.expression),
       seq('{', '}'),
@@ -96,9 +103,9 @@ module.exports = grammar({
     // Function definition
     // ------------------------------------------------------------------
 
-    // ("void" | "int") Ident "(" [FuncFParams] ")" Block
+    // FuncType Ident "(" [FuncFParams] ")" Block
     function_def: $ => seq(
-      field('return_type', choice('void', 'int')),
+      field('return_type', $.func_type),
       field('name', $.identifier),
       '(',
       optional(field('params', $.func_params)),
@@ -106,15 +113,19 @@ module.exports = grammar({
       field('body', $.block),
     ),
 
+    // FuncType -> "void" | "int"
+    func_type: _ => choice('void', 'int'),
+
     func_params: $ => commaSep1($.func_param),
 
-    // "int" Ident ["[" "]" {"[" ConstExp "]"}]
+    // FuncFParam -> "int" Ident ["[" "]" {"[" Exp "]"}]
+    // Note: higher array dimensions use Exp (not ConstExp) per the spec.
     func_param: $ => seq(
       'int',
       field('name', $.identifier),
       optional(seq(
         '[', ']',
-        repeat(seq('[', field('dim', $.const_exp), ']')),
+        repeat(seq('[', field('dim', $.expression), ']')),
       )),
     ),
 
@@ -152,99 +163,110 @@ module.exports = grammar({
     // [Exp] ";"
     exp_stmt: $ => seq(optional($.expression), ';'),
 
-    // Dangling-else resolved by prec.right: shift "else" rather than reduce.
+    // "if" "(" Cond ")" Stmt ["else" Stmt]
+    // prec.right shifts "else" to the nearest "if" (dangling-else resolution).
     if_stmt: $ => prec.right(seq(
-      'if', '(', field('cond', $.expression), ')',
+      'if', '(', field('cond', $.condition), ')',
       field('then', $.statement),
       optional(seq('else', field('else', $.statement))),
     )),
 
+    // "while" "(" Cond ")" Stmt
     while_stmt: $ => seq(
-      'while', '(', field('cond', $.expression), ')',
+      'while', '(', field('cond', $.condition), ')',
       field('body', $.statement),
     ),
 
-    break_stmt: _ => seq('break', ';'),
+    break_stmt:    _ => seq('break', ';'),
     continue_stmt: _ => seq('continue', ';'),
 
+    // "return" [Exp] ";"
     return_stmt: $ => seq('return', optional(field('value', $.expression)), ';'),
 
     // ------------------------------------------------------------------
-    // Expressions
+    // Exp (= AddExp in the spec) — arithmetic expression
     //
-    // Precedence (low → high):
-    //   ||  &&  ==!=  < > <= >=  + -  * / %  unary  call  subscript
+    // Covers: PrimaryExp, UnaryExp, MulExp, AddExp.
+    // Operators: + - * / %  (unary: + - !)
     // ------------------------------------------------------------------
 
     expression: $ => choice(
       $.number,
-      $.identifier,
-      $.subscript_expression,
-      $.call_expression,
-      $.parenthesized_expression,
-      $.unary_expression,
-      $.binary_expression,
+      $.lval,                       // PrimaryExp -> LVal
+      $.call_expression,            // UnaryExp   -> Ident "(" [FuncRParams] ")"
+      $.parenthesized_expression,   // PrimaryExp -> "(" Exp ")"
+      $.unary_expression,           // UnaryExp   -> UnaryOp UnaryExp
+      $.binary_expression,          // MulExp / AddExp
     ),
 
-    parenthesized_expression: $ => seq('(', $.expression, ')'),
+    // PrimaryExp -> "(" Exp ")"
+    // Uses $.condition so that !(a < b) parses (! applies to a parenthesized
+    // condition), which is the universally expected behaviour in SysY programs.
+    parenthesized_expression: $ => seq('(', $.condition, ')'),
 
-    // id[i][j]...  — used as both rvalue and lvalue
-    // rvalue form: chained subscript_expressions starting from identifier
-    subscript_expression: $ => prec.left(PREC.SUBSCRIPT, seq(
-      field('object', $.expression),
-      '[',
-      field('index', $.expression),
-      ']',
-    )),
-
-    // id(args)  — only identifiers may be called in SysY
-    call_expression: $ => prec(PREC.CALL, seq(
-      field('function', $.identifier),
-      '(',
-      optional(commaSep1(field('argument', $.expression))),
-      ')',
-    )),
-
-    unary_expression: $ => prec.right(PREC.UNARY, seq(
-      field('operator', choice('+', '-', '!')),
-      field('operand', $.expression),
-    )),
-
-    binary_expression: $ => choice(
-      prec.left(PREC.MUL,  seq($.expression, field('op', choice('*', '/', '%')), $.expression)),
-      prec.left(PREC.ADD,  seq($.expression, field('op', choice('+', '-')),      $.expression)),
-      prec.left(PREC.REL,  seq($.expression, field('op', choice('<', '>', '<=', '>=')), $.expression)),
-      prec.left(PREC.EQ,   seq($.expression, field('op', choice('==', '!=')),   $.expression)),
-      prec.left(PREC.LAND, seq($.expression, field('op', '&&'),                 $.expression)),
-      prec.left(PREC.LOR,  seq($.expression, field('op', '||'),                 $.expression)),
-    ),
-
-    // LVal used as assignment target: Ident {"[" Exp "]"}
-    // In expression context use identifier + subscript_expression instead.
+    // LVal -> Ident {"[" Exp "]"}
+    // Reused for both rvalue (inside expression) and lvalue (assign_stmt).
     lval: $ => seq(
       field('name', $.identifier),
       repeat(seq('[', field('index', $.expression), ']')),
     ),
 
-    // ConstExp is semantically restricted but syntactically identical to Exp.
+    // Ident "(" [FuncRParams] ")"
+    call_expression: $ => seq(
+      field('function', $.identifier),
+      '(',
+      optional(commaSep1(field('argument', $.expression))),
+      ')',
+    ),
+
+    // UnaryOp UnaryExp — UnaryOp -> "+" | "-" | "!"
+    unary_expression: $ => prec.right(PREC.UNARY, seq(
+      field('operator', choice('+', '-', '!')),
+      field('operand', $.expression),
+    )),
+
+    // MulExp -> MulExp ("*"|"/"|"%") UnaryExp
+    // AddExp -> AddExp ("+"|"-") MulExp
+    binary_expression: $ => choice(
+      prec.left(PREC.MUL, seq(field('left', $.expression), field('op', choice('*', '/', '%')), field('right', $.expression))),
+      prec.left(PREC.ADD, seq(field('left', $.expression), field('op', choice('+', '-')),      field('right', $.expression))),
+    ),
+
+    // ------------------------------------------------------------------
+    // Cond (= LOrExp in the spec) — condition expression
+    //
+    // Extends Exp with relational and logical operators.
+    // Used exclusively as the condition of "if" and "while".
+    // Precedence (low → high): ||  &&  == !=  < > <= >=
+    // ------------------------------------------------------------------
+
+    condition: $ => choice(
+      $.expression,
+      prec.left(PREC.REL,  seq(field('left', $.condition), field('op', choice('<', '>', '<=', '>=')), field('right', $.condition))),
+      prec.left(PREC.EQ,   seq(field('left', $.condition), field('op', choice('==', '!=')),           field('right', $.condition))),
+      prec.left(PREC.LAND, seq(field('left', $.condition), field('op', '&&'),                         field('right', $.condition))),
+      prec.left(PREC.LOR,  seq(field('left', $.condition), field('op', '||'),                         field('right', $.condition))),
+    ),
+
+    // ConstExp is semantically restricted to compile-time constants but
+    // syntactically identical to Exp.
     const_exp: $ => $.expression,
 
     // ------------------------------------------------------------------
     // Terminals
     // ------------------------------------------------------------------
 
-    // Decimal, octal, hex integer literals — no floats in SysY.
+    // IntConst -> decimal | octal | hexadecimal
     number: _ => token(choice(
-      /0[xX][0-9a-fA-F]+/,   // hex (must come first)
-      /0[0-7]*/,              // octal (matches plain "0" too)
-      /[1-9][0-9]*/,          // decimal
+      /0[xX][0-9a-fA-F]+/,  // hexadecimal (must precede octal rule)
+      /0[0-7]*/,             // octal (also matches plain "0")
+      /[1-9][0-9]*/,         // decimal
     )),
 
     identifier: _ => /[_a-zA-Z][_a-zA-Z0-9]*/,
 
-    line_comment: _ => token(seq('//', /.*/)),
+    line_comment:  _ => token(seq('//', /.*/)),
 
-    // Block comment: /* ... */ (non-nested, matching the LALRPOP spec)
     block_comment: _ => token(seq(
       '/*',
       /[^*]*\*+(?:[^/*][^*]*\*+)*/,

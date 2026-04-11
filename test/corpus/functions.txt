@@ -1,0 +1,141 @@
+================================================================================
+Void function with no parameters
+================================================================================
+
+void foo() {}
+
+--------------------------------------------------------------------------------
+
+(compilation_unit
+  (function_def
+    return_type: (func_type)
+    name: (identifier)
+    body: (block)))
+
+================================================================================
+Int function returning zero
+================================================================================
+
+int main() {
+  return 0;
+}
+
+--------------------------------------------------------------------------------
+
+(compilation_unit
+  (function_def
+    return_type: (func_type)
+    name: (identifier)
+    body: (block
+      (block_item
+        (statement
+          (return_stmt
+            value: (expression (number))))))))
+
+================================================================================
+Function with int parameters
+================================================================================
+
+int add(int a, int b) {
+  return a;
+}
+
+--------------------------------------------------------------------------------
+
+(compilation_unit
+  (function_def
+    return_type: (func_type)
+    name: (identifier)
+    params: (func_params
+      (func_param name: (identifier))
+      (func_param name: (identifier)))
+    body: (block
+      (block_item
+        (statement
+          (return_stmt
+            value: (expression (lval name: (identifier)))))))))
+
+================================================================================
+Function with array parameter
+================================================================================
+
+int sum(int arr[], int n) {
+  return n;
+}
+
+--------------------------------------------------------------------------------
+
+(compilation_unit
+  (function_def
+    return_type: (func_type)
+    name: (identifier)
+    params: (func_params
+      (func_param name: (identifier))
+      (func_param name: (identifier)))
+    body: (block
+      (block_item
+        (statement
+          (return_stmt
+            value: (expression (lval name: (identifier)))))))))
+
+================================================================================
+Function with 2D array parameter
+================================================================================
+
+void fill(int mat[][4], int n) {}
+
+--------------------------------------------------------------------------------
+
+(compilation_unit
+  (function_def
+    return_type: (func_type)
+    name: (identifier)
+    params: (func_params
+      (func_param
+        name: (identifier)
+        dim: (expression (number)))
+      (func_param name: (identifier)))
+    body: (block)))
+
+================================================================================
+Global declaration before function
+================================================================================
+
+int N = 10;
+
+int main() {
+  return 0;
+}
+
+--------------------------------------------------------------------------------
+
+(compilation_unit
+  (decl
+    (var_decl
+      (var_def name: (identifier) init: (init_val exp: (expression (number))))))
+  (function_def
+    return_type: (func_type)
+    name: (identifier)
+    body: (block
+      (block_item
+        (statement
+          (return_stmt value: (expression (number))))))))
+
+================================================================================
+Void return
+================================================================================
+
+void g() {
+  return;
+}
+
+--------------------------------------------------------------------------------
+
+(compilation_unit
+  (function_def
+    return_type: (func_type)
+    name: (identifier)
+    body: (block
+      (block_item
+        (statement
+          (return_stmt))))))

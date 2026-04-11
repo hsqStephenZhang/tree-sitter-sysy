@@ -29,20 +29,22 @@
     "type": "binary_expression",
     "named": true,
     "fields": {
+      "left": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      },
       "op": {
         "multiple": false,
         "required": true,
         "types": [
           {
-            "type": "!=",
-            "named": false
-          },
-          {
             "type": "%",
-            "named": false
-          },
-          {
-            "type": "&&",
             "named": false
           },
           {
@@ -60,43 +62,19 @@
           {
             "type": "/",
             "named": false
-          },
+          }
+        ]
+      },
+      "right": {
+        "multiple": false,
+        "required": true,
+        "types": [
           {
-            "type": "<",
-            "named": false
-          },
-          {
-            "type": "<=",
-            "named": false
-          },
-          {
-            "type": "==",
-            "named": false
-          },
-          {
-            "type": ">",
-            "named": false
-          },
-          {
-            "type": ">=",
-            "named": false
-          },
-          {
-            "type": "||",
-            "named": false
+            "type": "expression",
+            "named": true
           }
         ]
       }
-    },
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "expression",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -171,7 +149,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
+      "required": true,
       "types": [
         {
           "type": "decl",
@@ -179,6 +157,80 @@
         },
         {
           "type": "function_def",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "condition",
+    "named": true,
+    "fields": {
+      "left": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "condition",
+            "named": true
+          }
+        ]
+      },
+      "op": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "!=",
+            "named": false
+          },
+          {
+            "type": "&&",
+            "named": false
+          },
+          {
+            "type": "<",
+            "named": false
+          },
+          {
+            "type": "<=",
+            "named": false
+          },
+          {
+            "type": "==",
+            "named": false
+          },
+          {
+            "type": ">",
+            "named": false
+          },
+          {
+            "type": ">=",
+            "named": false
+          },
+          {
+            "type": "||",
+            "named": false
+          }
+        ]
+      },
+      "right": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "condition",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "expression",
           "named": true
         }
       ]
@@ -332,7 +384,7 @@
           "named": true
         },
         {
-          "type": "identifier",
+          "type": "lval",
           "named": true
         },
         {
@@ -341,10 +393,6 @@
         },
         {
           "type": "parenthesized_expression",
-          "named": true
-        },
-        {
-          "type": "subscript_expression",
           "named": true
         },
         {
@@ -363,7 +411,7 @@
         "required": false,
         "types": [
           {
-            "type": "const_exp",
+            "type": "expression",
             "named": true
           }
         ]
@@ -394,6 +442,11 @@
         }
       ]
     }
+  },
+  {
+    "type": "func_type",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "function_def",
@@ -434,12 +487,8 @@
         "required": true,
         "types": [
           {
-            "type": "int",
-            "named": false
-          },
-          {
-            "type": "void",
-            "named": false
+            "type": "func_type",
+            "named": true
           }
         ]
       }
@@ -454,7 +503,7 @@
         "required": true,
         "types": [
           {
-            "type": "expression",
+            "type": "condition",
             "named": true
           }
         ]
@@ -542,7 +591,7 @@
       "required": true,
       "types": [
         {
-          "type": "expression",
+          "type": "condition",
           "named": true
         }
       ]
@@ -605,32 +654,6 @@
           "named": true
         }
       ]
-    }
-  },
-  {
-    "type": "subscript_expression",
-    "named": true,
-    "fields": {
-      "index": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "expression",
-            "named": true
-          }
-        ]
-      },
-      "object": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "expression",
-            "named": true
-          }
-        ]
-      }
     }
   },
   {
@@ -737,7 +760,7 @@
         "required": true,
         "types": [
           {
-            "type": "expression",
+            "type": "condition",
             "named": true
           }
         ]
